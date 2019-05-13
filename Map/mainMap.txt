@@ -1,0 +1,3 @@
+{"sw":"null","d":"null","e":"商店","description":"曾经的白宫，如今随着华盛顿的陷落成为了特工们的行动基地\n勇敢的人们坚守着着最后的防线\n","nw":"null","type":"入口","n":"null","se":"null","s":"中央广场","u":"null","w":"null","ne":"null","name":"行动基地"}
+{"sw":"中央广场","d":"null","e":"null","description":"商店，现在只卖用来在乱局中自保的装备\n","nw":"null","type":"安全区","n":"null","se":"null","s":"null","u":"null","w":"行动基地","ne":"null","name":"商店"}
+{"sw":"null","d":"null","e":"null","description":"中央广场，如今已经残骸满地，垃圾，弹壳还有干透了的血迹到处都是\n这是我们得以夺回白宫获得一席之地的代价\n","nw":"null","type":"安全区","n":"行动基地","se":"null","s":"null","u":"null","w":"null","ne":"商店","name":"中央广场"}
