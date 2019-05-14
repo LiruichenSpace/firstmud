@@ -1,5 +1,7 @@
 package Characters;
 
+import GameMaps.BlankRoom;
+import GameMaps.GameMap;
 import Items.Item;
 import MudMonitor.MainWindow;
 import Skills.SkillFactory;
@@ -17,12 +19,14 @@ public class User extends BlankPerson {
      * 升级所需
      */
     public int upgradeEx;
+    public GameMap privateMap;
     public User(String name){
         this.name=name;
         type=CharacterType.特工;
         experience=0;
         upgradeEx=3;
         damageNum=30;
+        privateMap=null;
         room="";
     }
 
@@ -67,7 +71,6 @@ public class User extends BlankPerson {
     void coolDown(){
 
     }
-
     public String showStatus(){
         StringBuilder sb=new StringBuilder();
         sb.append(super.showStatus());

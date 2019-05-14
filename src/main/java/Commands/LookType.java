@@ -6,5 +6,12 @@ package Commands;
  * 3.角色:查看角色的详细信息;4.方向:查看该房间该方向上的房间
  */
 public enum LookType {
-    我,房间,角色,方向
+    我,房间,角色,方向,在线玩家;
+    static public boolean have(String s){
+        boolean flag=false;
+        for(LookType f:LookType.values()){
+            if(f.name().equals(s))flag=true;
+        }
+        return flag;
+    }
 }

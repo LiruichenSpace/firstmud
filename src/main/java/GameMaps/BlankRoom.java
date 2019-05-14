@@ -12,7 +12,7 @@ import java.util.Map;
 public class BlankRoom {
     public HashMap<String,BlankPerson> personList;//所有人物
     public Map<Diraction,String> surround;
-    RoomType type;
+    public RoomType type;
     public String name;
     public String description;
     public BlankRoom(){

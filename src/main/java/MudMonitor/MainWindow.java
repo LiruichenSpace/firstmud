@@ -5,9 +5,7 @@ import Characters.CharacterType;
 import Characters.User;
 import Commands.FirstCommand;
 import Commands.LookType;
-import GameMaps.BlankRoom;
-import GameMaps.Diraction;
-import GameMaps.GameMap;
+import GameMaps.*;
 import Items.Item;
 import Skills.AbstractSkill;
 import Skills.SkillTypes;
@@ -73,7 +71,7 @@ public class MainWindow extends JFrame{
         //设置监控台窗体
         onlineDict=new HashMap<String, OutputStream>();
         skillDict= new HashMap<SkillTypes, AbstractSkill>();
-        mainMap=new GameMap("mainMap.txt");
+        mainMap=new GameMap("mainMap");
         //实例化系统数据;
         try {
             ss=new ServerSocket(8667);//用于收发交替的普通处理方式
@@ -81,7 +79,6 @@ public class MainWindow extends JFrame{
         } catch (IOException e) {
             e.printStackTrace();
         }
-        mainMap.saveMap();
         if(ss!=null){
             logs.append("服务器已启动\n");
             logs.setSelectionEnd(logs.getText().length());
@@ -137,26 +134,26 @@ public class MainWindow extends JFrame{
      */
     String move(User user, Diraction diraction){
         StringBuilder sb=new StringBuilder();
-        BlankRoom room;
-        boolean type=false;
-        synchronized (mainMap) {
-            room = mainMap.getRoom(user.room);
-        }
+        BlankRoom room=null;
+        room=getCurrRoom(user);
             BlankRoom to=null;
             if(room.surround.get(diraction).equalsIgnoreCase("null")){
                 sb.append("此方向没有房间");
             }
             else{
-                synchronized (mainMap) {
-                    to=mainMap.getRoom(room.surround.get(diraction));
+                if(user.privateMap==null)
+                    synchronized (mainMap) {
+                        to=mainMap.getRoom(room.surround.get(diraction));
+                    }
+                else{
+                    to=user.privateMap.getRoom(room.surround.get(diraction));
                 }
-                type= to instanceof GameMap;
-                if(type){
+                if(to .type==RoomType.副本){
                     sb.append("你进入了" + to.name);
                     informUserOffline(user);
-                    to=(GameMap)to;
-                    ((GameMap) to).enter(user);
-                    informUserOnline(user);
+                    user.room=to.name;
+                    user.privateMap= MapFactory.creatPrivateMap(user);
+                    user.privateMap.enter(user);
                 }
                 else {
                     sb.append("你进入了" + to.name);
@@ -245,10 +242,11 @@ public class MainWindow extends JFrame{
                 sendMessage("您现在位于："+u.room+"\n请输入命令：\n");
                 message=readMessage();
                 /////////////////////////////////////完成登入,循环处理
-                while(!message.equalsIgnoreCase("quit")){
+                while(!message.equalsIgnoreCase("退出")){
                     String[] command=message.split(" +");
                     //////////////////////////////////这可真是不忍直视的恶臭,强行解释命令,难受啊.....
-                    switch(FirstCommand.valueOf(command[0])){
+                    if(FirstCommand.have(command[0]))
+                        switch(FirstCommand.valueOf(command[0])){
                         case 移动:{
                             response.append(move(u,Diraction.valueOf(command[1])));
                         }break;
@@ -260,17 +258,15 @@ public class MainWindow extends JFrame{
                         }break;
                         case 查看:{
                             if(command.length>1) {
-                                if(command[1].equals("我")||command[1].equals("房间")
-                                        ||command[1].equals("方向")||command[1].equals("角色")) {
+                                if(LookType.have(command[1]))
                                     switch (LookType.valueOf(command[1])) {//switch二级目录
                                         case 我: {
                                             response.append(u.showStatus());
-                                        }break;
+                                        }
+                                        break;
                                         case 房间: {
                                             BlankRoom room = null;
-                                            synchronized (mainMap) {
-                                                room = mainMap.getRoom(u.room);
-                                            }
+                                            room=getCurrRoom(u);
                                             response.append(room.name);
                                             response.append("\n");
                                             response.append(room.description);
@@ -284,14 +280,15 @@ public class MainWindow extends JFrame{
                                                     num = 0;
                                                 }
                                             }
-                                        }break;
+                                        }
+                                        break;
                                         case 方向: {
                                             BlankRoom room = null;
                                             synchronized (mainMap) {
                                                 room = mainMap.getRoom(u.room);
                                             }
                                             if (command.length > 2) {
-                                                String to = room.surround.get(command[2]);
+                                                String to = room.surround.get(Diraction.valueOf(command[2]));
                                                 if (to == null) {
                                                     response.append("方向参数错误");
                                                 } else {
@@ -302,7 +299,7 @@ public class MainWindow extends JFrame{
                                                         response.append("没有其他房间");
                                                     } else {
                                                         response.append("为");
-                                                        response.append(room.surround.get(command[2]));
+                                                        response.append(room.surround.get(Diraction.valueOf(command[2])));
                                                     }
                                                 }
                                             } else {
@@ -319,22 +316,36 @@ public class MainWindow extends JFrame{
                                                     }
                                                 }
                                             }
-                                        }break;
+                                        }
+                                        break;
                                         case 角色: {
                                             if (command.length > 2) {
                                                 BlankRoom room = null;
                                                 synchronized (mainMap) {
                                                     room = mainMap.getRoom(u.room);
                                                 }
-                                                BlankPerson temp=room.personList.get(command[2]);
-                                                if(temp!=null) response.append(temp.showStatus());
+                                                BlankPerson temp = room.personList.get(command[2]);
+                                                if (temp != null) response.append(temp.showStatus());
                                                 else response.append("该房间无此角色");
                                             } else {
                                                 response.append("指令长度错误,请输入欲查看用户");
                                             }
+                                        }
+                                        break;
+                                        case 在线玩家:{
+                                            response.append("当前在线玩家有:\n");
+                                            int num = 0;
+                                            for (String s : onlineDict.keySet()) {
+                                                response.append(s + "  ");
+                                                num++;
+                                                if (num == 5) {
+                                                    response.append("\n");
+                                                    num = 0;
+                                                }
+                                            }
                                         }break;
                                     }
-                                }else{
+                                else{
                                     response.append("指令错误,可用指令选项:我,房间,方向,角色");
                                 }
                             }else{
@@ -342,11 +353,8 @@ public class MainWindow extends JFrame{
                             }
                         }break;
                         case 逃跑:{
-                            BlankRoom room=null;
-                            synchronized (mainMap){
-                                room=mainMap.getRoom(u.room);
-                            }
-                            if(room instanceof GameMap){//说明是副本
+                            BlankRoom room=getCurrRoom(u);
+                            if(room.type != RoomType.安全区&&room.type!=RoomType.暗区){//说明是副本
                                 GoBack(u);
                                 response.append("您已回到行动基地");
                             }
@@ -354,8 +362,36 @@ public class MainWindow extends JFrame{
                                 response.append("此处无法逃跑");
                             }
                         }break;
-                    }
+                        case 私聊:{
+                            if(command.length>2){
+                                command=message.split(" +",3);
+                                BlankRoom room = null;
+                                synchronized (mainMap) {
+                                    room = mainMap.getRoom(u.room);
+                                }
+                                if (onlineDict.keySet().contains(command[1])){
+                                    doBroadcast(onlineDict.get(command[1]),"[私聊]"+username+":"+command[2]);
+                                    response.append("消息发送完成");
+                                }
+                                else {response.append("无该角色在线");System.out.println(command[1]);}
+                            }
+                            else response.append("指令长度错误，指令格式：私聊 玩家名 消息");
+                        }break;
+                        case 群发:{
+                            if(command.length>1){
+                                command=message.split(" +",2);
+                                for(String s:onlineDict.keySet()){
+                                    if(!s.equals(username))
+                                        doBroadcast(onlineDict.get(s),"[群发]"+username+":"+command[1]);
+                                }
+                                response.append("信息已发送\n");
+                            }else{
+                                response.append("请输入要发送的消息");
+                            }
+                        }break;
 
+                    }
+                    else response.append("命令类型错误，可用命令：移动,攻击,查看,技能,退出,逃跑");
                     response.append("\n");
                     response.append("请输入指令:\n\n");
                     sendMessage(response.toString());
@@ -369,6 +405,7 @@ public class MainWindow extends JFrame{
                 buffOut.write(toByteArray("华盛顿等你回来，特工！".length()));
                 pw.print("华盛顿等你回来，特工！");
                 pw.flush();
+                onlineDict.remove(username);
                 doBroadcast(broadcastSocket.getOutputStream(),"disconnect");
                 logs.append("用户退出\n");
                 logs.setSelectionEnd(logs.getText().length());
@@ -474,6 +511,30 @@ public class MainWindow extends JFrame{
         }
     }
     /////////////////////////////////////////////////////////////////////////////工具函数组
+    /**
+     *
+     */
+    BlankRoom getCurrRoom(User user){
+        BlankRoom room=null;
+        if(user.privateMap!=null){
+            room=user.privateMap.getRoom(user.room);
+        }else{
+            synchronized (mainMap) {
+                room = mainMap.getRoom(user.room);
+            }
+        }
+        return room;
+    }
+    /**
+     *判断在enum中
+     */
+    boolean inFirstCommand(String type){
+        boolean flag=false;
+        for(FirstCommand f:FirstCommand.values()){
+            if(f.name().equals(type))flag=true;
+        }
+        return flag;
+    }
     /**
      * 用户上线
      * @param user 用户

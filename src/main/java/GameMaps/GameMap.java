@@ -9,18 +9,18 @@ import javax.sql.DataSource;
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 游戏主要地图，通过JSON文件读写初始化，地图状态固定，是否进行roguelike待测
  */
-public class GameMap extends BlankRoom{
+public class GameMap {
     String entrance;
-    String fileName;
-    public GameMap(String filename){
+    String mapName;
+    public GameMap(String mapname){
         rooms= new HashMap<String, BlankRoom>();
-        fileName=filename;
-
-        loadGameMap(filename);
+        mapName=mapname;
+        loadGameMap(mapName+".txt");
     }
 
     /**
@@ -45,27 +45,22 @@ public class GameMap extends BlankRoom{
                 String json = fr.readLine();
                 do{
                     jobj= JSON.parseObject(json);
-                    if(!jobj.getString("type").equals("副本")) {
-                        s.put(Diraction.南, jobj.getString("s"));
-                        s.put(Diraction.下, jobj.getString("d"));
-                        s.put(Diraction.上, jobj.getString("u"));
-                        s.put(Diraction.北, jobj.getString("n"));
-                        s.put(Diraction.东, jobj.getString("e"));
-                        s.put(Diraction.西, jobj.getString("w"));
-                        s.put(Diraction.西北, jobj.getString("nw"));
-                        s.put(Diraction.西南, jobj.getString("sw"));
-                        s.put(Diraction.东北, jobj.getString("ne"));
-                        s.put(Diraction.东南, jobj.getString("se"));
-                        br.setSurround(s);
-                        s = new HashMap<Diraction, String>();
-                        br.setName(jobj.getString("name").toString());
-                        br.type = RoomType.valueOf(jobj.getString("type"));
-                        br.description = jobj.getString("description");
-                        if(br.type.equals(RoomType.入口))entrance=br.name;
-                    }
-                    else{
-                        br=new GameMap(jobj.getString("name")+".txt");
-                    }
+                    s.put(Diraction.南, jobj.getString("s"));
+                    s.put(Diraction.下, jobj.getString("d"));
+                    s.put(Diraction.上, jobj.getString("u"));
+                    s.put(Diraction.北, jobj.getString("n"));
+                    s.put(Diraction.东, jobj.getString("e"));
+                    s.put(Diraction.西, jobj.getString("w"));
+                    s.put(Diraction.西北, jobj.getString("nw"));
+                    s.put(Diraction.西南, jobj.getString("sw"));
+                    s.put(Diraction.东北, jobj.getString("ne"));
+                    s.put(Diraction.东南, jobj.getString("se"));
+                    br.setSurround(s);
+                    s = new HashMap<Diraction, String>();
+                    br.setName(jobj.getString("name").toString());
+                    br.type = RoomType.valueOf(jobj.getString("type"));
+                    br.description = jobj.getString("description");
+                    if(br.type.equals(RoomType.入口))entrance=br.name;
                     rooms.put(br.name, br);
                     br=new BlankRoom();
                     json=fr.readLine();
@@ -84,11 +79,11 @@ public class GameMap extends BlankRoom{
         u.room=entrance;
     }
     /**
-     * 后期不再需要，只通过json加载房间文件
+     * 一个只读的地图文件为什么还要支持保存呢？巧了，我也在奇怪这一点
      */
     public void saveMap(){
         JSONObject jobj=new JSONObject();
-        File out=new File("Map\\"+fileName);
+        File out=new File("Map\\"+mapName);
         PrintWriter pr=null;
         if(!out.exists()) {
             try {
@@ -121,8 +116,12 @@ public class GameMap extends BlankRoom{
                 pr.flush();
                 System.out.println("ok");
             }
+
             jobj.clear();
         }
+    }
+    public Set<String> getRoomNames(){
+        return rooms.keySet();
     }
     public BlankRoom getRoom(String name){
         if(rooms.containsKey(name))
